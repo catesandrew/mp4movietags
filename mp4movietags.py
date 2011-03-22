@@ -74,16 +74,25 @@ def getDataFromTMDb(opts, movieName, movieYear):
         #end if count
     #end if len
     
-    for movieResult in movieResults:
-        #check that the year tag in the file name matches with the release date, otherwise not the movie we are looking for
-        if opts.verbose == 2:
-            print "!!Potential hit: %s" % movieResult['name']
-        if movieResult['released']:
-            if movieResult['released'].startswith(movieYear) or movieResult['released'].startswith(str(int(movieYear)+1)):
+    if movieYear != "":
+        for movieResult in movieResults:
+            #check that the year tag in the file name matches with the release date, otherwise not the movie we are looking for
+            if opts.verbose == 2:
+                print "!!Potential hit: %s" % movieResult['name']
+            if movieResult['released']:
+                if movieResult['released'].startswith(movieYear) or movieResult['released'].startswith(str(int(movieYear)+1)):
+                    movie = tmdb.getMovieInfo(movieResult['id'])
+                    movies.append(movie)
+        #end for movie
+    else:
+        for movieResult in movieResults:
+            #check that the year tag in the file name matches with the release date, otherwise not the movie we are looking for
+            if opts.verbose == 2:
+                print "!!Potential hit: %s" % movieResult['name']
+            if movieResult['released']:
                 movie = tmdb.getMovieInfo(movieResult['id'])
                 movies.append(movie)
-    #end for movie
-    
+        #end for movie
     return movies
 #end getDataFromTMDb
 
@@ -98,10 +107,16 @@ def tagFile(opts, movie, MP4Tagger):
     addArtwork = " --artwork \"%s\"" % movie['artworkFileName'].replace('"', '\\"') #the file we downloaded earlier
     addMediaKind = " --media_kind \"Movie\"" #set type to Movie
     addName =  " --name \"%s\"" % movie['name']
-    addDescription = " --description \"%s\"" % movie['overview'].replace('"', '\\"')
+    if movie['tagline'] is None:
+        addDescription = " --description \"%s\"" % movie['overview'].replace('"', '\\"')
+    else:
+        addDescription = " --description \"%s\"" % movie['tagline'].replace('"', '\\"')
     addLongDescription = " --long_description \"%s\"" % movie['overview'].replace('"', '\\"')
     addContentRating = "" # --content_rating \"%s\"" % "Inoffensive"
-    addRating = " --rating \"%s\"" % "Unrated"
+    if movie['certification'] is None:
+        addRating = " --rating \"%s\"" % "Unrated"
+    else: 
+        addRating = " --rating \"%s\"" % movie['certification']
     addComments = " --comments \"tagged by mp4movietags\""
     additionalParameters = ""
     
@@ -295,9 +310,14 @@ def main():
         movieName = movieFileName.replace(movieYear, '', 1).strip()
     else:
         try:
-            movieYear = yearWithBrackets.findall(movieFileName)[0]
-            movieName = movieFileName.replace(movieYear, '', 1).strip()
-            movieYear = yearWithoutBrackets.findall(movieYear)[0]
+            movieYear = yearWithBrackets.findall(movieFileName)
+            if len(movieYear) > 0:
+                movieYear = movieYear[0]
+                movieName = movieFileName.replace(movieYear, '', 1).strip()
+                movieYear = yearWithoutBrackets.findall(movieYear)[0]
+            else:
+                movieName = movieFileName.strip()
+                movieYear = ""
         except:
             sys.stderr.write("%s is of incorrect syntax. Example: \"Movie Name (YEAR).m4v\"" % fileName)
             return 3
