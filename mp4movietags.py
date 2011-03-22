@@ -104,31 +104,35 @@ def tagFile(opts, movie, MP4Tagger):
     #end if verbose
     
     #setup tags for the MP4Tagger function
-    addArtwork = " --artwork \"%s\"" % movie['artworkFileName'].replace('"', '\\"') #the file we downloaded earlier
-    addMediaKind = " --media_kind \"Movie\"" #set type to Movie
-    addName =  " --name \"%s\"" % movie['name']
+    addArtwork = " -picture \"%s\"" % movie['artworkFileName'].replace('"', '\\"') #the file we downloaded earlier
+    addMediaKind = " -type \"Movie\"" #set type to Movie
+    addName =  " -song \"%s\"" % movie['name']
     if movie['tagline'] is None:
-        addDescription = " --description \"%s\"" % movie['overview'].replace('"', '\\"')
+        data = movie['overview'].replace('"', '\\"')
+        #addDescription = " -description \"%s\"" % movie['overview'].replace('"', '\\"')
+        addDescription = " -description \"%s\"" % (data[:250] + '...') if len(data) > 250 else data
     else:
-        addDescription = " --description \"%s\"" % movie['tagline'].replace('"', '\\"')
-    addLongDescription = " --long_description \"%s\"" % movie['overview'].replace('"', '\\"')
-    addContentRating = "" # --content_rating \"%s\"" % "Inoffensive"
+        data = movie['tagline'].replace('"', '\\"') + " - " + movie['overview'].replace('"', '\\"')
+        #addDescription = " -description \"%s - %s\"" % (movie['tagline'].replace('"', '\\"'), movie['overview'].replace('"', '\\"'))
+        addDescription = " -description \"%s\"" % (data[:250] + '...') if len(data) > 250 else data
+    addLongDescription = " -longdesc \"%s\"" % movie['overview'].replace('"', '\\"')
+    addContentRating = " -crating \"%s\"" % "Inoffensive"
     if movie['certification'] is None:
-        addRating = " --rating \"%s\"" % "Unrated"
+        addRating = " -rating \"%s\"" % "Unrated"
     else: 
-        addRating = " --rating \"%s\"" % movie['certification']
-    addComments = " --comments \"tagged by mp4movietags\""
+        addRating = " -rating \"%s\"" % movie['certification']
+    addComments = " -comment \"{'imdb_id':'%s', 'tmdb_id':'%s'}\"" % (movie['imdb_id'], movie['id'])
     additionalParameters = ""
     
     if (movie['released'] == ""):
         addYear = ""
     else:
-        addYear = " --release_date \"%sT07:00:00Z\"" % movie['released']
+        addYear = " -year \"%sT07:00:00Z\"" % movie['released']
     #end if (movie['released'] == "")
     
     genres = movie['categories']['genre'].keys()
     if (len(genres) > 0):
-        addGenre = " --genre \"%s\"" % genres[len(genres)-1]
+        addGenre = " -genre \"%s\"" % genres[len(genres)-1]
     else:
         addGenre = ""
     #end if (len(genres)
@@ -139,7 +143,7 @@ def tagFile(opts, movie, MP4Tagger):
         break #we only need one of the director's (if multiple)
     #end for personID
     
-    addArtist = " --artist \"%s\"" % artist
+    addArtist = " -artist \"%s\"" % artist
     
     #create rDNSatom
     addCast = ""
@@ -149,31 +153,37 @@ def tagFile(opts, movie, MP4Tagger):
     addScreenwriters = ""
     if len(movie['cast']['Actor']) > 0:
         actors = createCommaSeperatedStringFromJobSpecificCastDict(movie['cast']['Actor'])
-        addCast = " --cast \"%s\"" % actors
+        addCast = " -cast \"%s\"" % actors
+        addArtist = " -artist \"%s\"" % actors
     #end if len 
     if len(movie['cast']['Director']) > 0:
         directors = createCommaSeperatedStringFromJobSpecificCastDict(movie['cast']['Director'])
-        addDirectors = " --director \"%s\"" % directors
+        addDirectors = " -director \"%s\"" % directors
     #end if len
     if len(movie['cast']['Codirector']) > 0:
         codirectors = createCommaSeperatedStringFromJobSpecificCastDict(movie['cast']['Codirector'])
-        addCodirectors = " --codirector \"%s\"" % codirectors
+        addCodirectors = " -codirector \"%s\"" % codirectors
     #end if len
     if len(movie['cast']['Producer']) > 0:
         producers = createCommaSeperatedStringFromJobSpecificCastDict(movie['cast']['Producer'])
-        addProducers = " --producers \"%s\"" % producers
+        addProducers = " -producers \"%s\"" % producers
     #end if len
     if len(movie['cast']['Author']) > 0:
         authors = createCommaSeperatedStringFromJobSpecificCastDict(movie['cast']['Author'])
-        addScreenwriters = " --screenwriters \"%s\"" % authors
+        addScreenwriters = " -swriters \"%s\"" % authors
     #end if len
     
+    #if movie['studios']['name'] is not None:
+    #    studio = " -studio \"%s\"" % movie['studios']['name']
+    #else:
+    #    studio = " -studio \"\""
+    
     #Create the command line string
-    tagCmd = "\"" + MP4Tagger + "\" -i \"" + movie['fileName'].replace('"', '\\"') + "\"" \
+    tagCmd = "\"" + MP4Tagger + "\"" \
     + addName + addArtwork + addMediaKind + addArtist + addGenre + addDescription \
     + addRating + addContentRating + addYear + addComments + addLongDescription \
     + addCast + addDirectors + addCodirectors + addProducers + addScreenwriters \
-    + additionalParameters
+    + additionalParameters + " \"" + movie['fileName'].replace('"', '\\"') + "\"" 
     
     tagCmd = tagCmd.replace('`', "'")
     
@@ -256,10 +266,10 @@ def main():
     
     opts, args = parser.parse_args()
     
-    MP4Tagger = os.path.join(sys.path[0], "MP4Tagger")
-    if not os.path.isfile(MP4Tagger):
-        sys.stderr.write("MP4Tagger is missing!\n")
-        return -1
+    MP4Tagger = "mp4tags"
+    #if not os.path.isfile(MP4Tagger):
+    #    sys.stderr.write("MP4Tagger is missing!\n")
+    #    return -1
     #end if not os.path.isfile
     
     if opts.overwrite:
@@ -337,13 +347,6 @@ def main():
     
     #============ embed information in file using MP4Tagger ============
     if opts.tagging:
-        #check if user wishes to bypass already tagged check
-        if not opts.forcetagging:
-            #check if file has already been tagged
-            if alreadyTagged(opts, MP4Tagger, fileName):
-                return 0
-            #end if alreadyTagged
-        #end if not forcetagging
         
         #============ TAG DATA ============ 
         #download information from TMDb
