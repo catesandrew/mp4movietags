@@ -109,12 +109,11 @@ def tagFile(opts, movie, MP4Tagger):
     addName =  " -song \"%s\"" % movie['name']
     if movie['tagline'] is None:
         data = movie['overview'].replace('"', '\\"')
-        #addDescription = " -description \"%s\"" % movie['overview'].replace('"', '\\"')
-        addDescription = " -description \"%s\"" % (data[:250] + '...') if len(data) > 250 else data
     else:
         data = movie['tagline'].replace('"', '\\"') + " - " + movie['overview'].replace('"', '\\"')
-        #addDescription = " -description \"%s - %s\"" % (movie['tagline'].replace('"', '\\"'), movie['overview'].replace('"', '\\"'))
-        addDescription = " -description \"%s\"" % (data[:250] + '...') if len(data) > 250 else data
+      
+    shortDescription = (data[:250] + '...') if len(data) > 250 else data
+    addDescription = " -description \"%s\"" % shortDescription    
     addLongDescription = " -longdesc \"%s\"" % movie['overview'].replace('"', '\\"')
     addContentRating = " -crating \"%s\"" % "Inoffensive"
     if movie['certification'] is None:
@@ -172,18 +171,19 @@ def tagFile(opts, movie, MP4Tagger):
         authors = createCommaSeperatedStringFromJobSpecificCastDict(movie['cast']['Author'])
         addScreenwriters = " -swriters \"%s\"" % authors
     #end if len
-    
-    #if movie['studios']['name'] is not None:
-    #    studio = " -studio \"%s\"" % movie['studios']['name']
-    #else:
-    #    studio = " -studio \"\""
+        
+    studio = " -studio \"\""    
+    if movie['studios'] is not None:
+        for movieStudio in movie['studios']:
+            studio = " -studio \"%s\"" % movieStudio
+        
     
     #Create the command line string
     tagCmd = "\"" + MP4Tagger + "\"" \
     + addName + addArtwork + addMediaKind + addArtist + addGenre + addDescription \
     + addRating + addContentRating + addYear + addComments + addLongDescription \
     + addCast + addDirectors + addCodirectors + addProducers + addScreenwriters \
-    + additionalParameters + " \"" + movie['fileName'].replace('"', '\\"') + "\"" 
+    + studio + additionalParameters + " \"" + movie['fileName'].replace('"', '\\"') + "\"" 
     
     tagCmd = tagCmd.replace('`', "'")
     
