@@ -396,11 +396,15 @@ def main():
             #allow user to preview images
             print "  Example of listing: 0 2 4"
             artworkPreviewRequestNumbers = raw_input("  List Images to Preview: ")
-            artworkPreviewRequests = artworkPreviewRequestNumbers.split()
-    
             artworkPreviewUrls = []
-            for artworkPreviewRequest in artworkPreviewRequests:
-                artworkPreviewUrls.append(artworksPreview[int(artworkPreviewRequest)])
+            if artworkPreviewRequestNumbers:
+                artworkPreviewRequests = artworkPreviewRequestNumbers.split()
+    
+                for artworkPreviewRequest in artworkPreviewRequests:
+                    artworkPreviewUrls.append(artworksPreview[int(artworkPreviewRequest)])
+            else:
+                for i in range(0, len(artworksLarge)):
+                    artworkPreviewUrls.append(artworksPreview[i])
             #end for artworkPreviewRequest
             openurl(artworkPreviewUrls)
             
